@@ -1,0 +1,5 @@
+import Link from "next/link";
+export const metadata = { title: "Developer preview" };
+export default function Developers() {
+ return <div className="shell section prose"><p className="eyebrow">BUILT FOR BUSINESS · API ROADMAP</p><h1>Connect when<br/>you’re ready.</h1><p>Qubio’s business API is planned, but it is not available yet. There are no live API keys or message-sending endpoints in this preview.</p><div className="notice">Do not send credentials, customer phone numbers, or payment details to this demo.</div><h2>What we plan to support</h2><ul><li>Approved business accounts with scoped, revocable API keys.</li><li>Service discovery, order tracking, and consent-based messaging.</li><li>Request limits, duplicate-request protection, and signed supplier callbacks.</li><li>Clear error responses and a sandbox before production access.</li></ul><h2>Designed for authorized use</h2><p>Only approved supplier integrations and messages with a lawful basis and appropriate customer consent will be supported. Supplier terms and country-specific rules must be reviewed before launch.</p><Link className="button" href="/#services">Explore sample services ↗</Link></div>;
+}
