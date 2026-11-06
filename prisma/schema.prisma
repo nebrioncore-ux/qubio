@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  DELIVERED
+  FAILED
+  REFUNDED
+}
+
+enum LedgerKind {
+  TOP_UP
+  PURCHASE
+  REFUND
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id            String   @id @default(cuid())
+  authSubject   String   @unique
+  email         String   @unique
+  role          Role     @default(CUSTOMER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  wallet        Wallet?
+  orders        Order[]
+  refundRequests RefundRequest[]
+  apiKeys       ApiKey[]
+}
+
+model Wallet {
+  id             String @id @default(cuid())
+  userId         String @unique
+  user           User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  currency       String @default("NGN")
+  // Integer minor units: 100 kobo = 1 naira. Never use floating point for money.
+  balanceKobo    BigInt @default(0)
+  version        Int @default(0)
+  entries        LedgerEntry[]
+}
+
+model Service {
+  id             String @id @default(cuid())
+  name           String
+  countryCode    String
+  description    String
+  priceKobo      BigInt
+  active         Boolean @default(false)
+  supplierRef    String?
+  orders         Order[]
+  @@index([countryCode, active])
+}
+
+model Order {
+  id             String @id @default(cuid())
+  userId         String
+  user           User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  serviceId      String
+  service        Service @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  status         OrderStatus @default(PENDING)
+  // Immutable quote snapshots must be set by trusted server code.
+  totalKobo      BigInt
+  currency       String @default("NGN")
+  quantity       Int
+  idempotencyKey String @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  entries        LedgerEntry[]
+  refund         RefundRequest?
+  @@index([userId, createdAt])
+}
+
+model LedgerEntry {
+  id             String @id @default(cuid())
+  walletId       String
+  wallet         Wallet @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  orderId        String?
+  order          Order? @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  kind           LedgerKind
+  // Signed amount: credits positive, purchases negative. Enforce in future migration.
+  amountKobo     BigInt
+  reference      String @unique
+  createdAt      DateTime @default(now())
+  @@index([walletId, createdAt])
+}
+
+model RefundRequest {
+  id             String @id @default(cuid())
+  orderId        String @unique
+  order          Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  userId         String
+  user           User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  reason         String
+  status         RefundStatus @default(REQUESTED)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model ApiKey {
+  id             String @id @default(cuid())
+  userId         String
+  user           User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  label          String
+  prefix         String
+  keyHash        String @unique
+  scopes         String[]
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime @default(now())
+}
